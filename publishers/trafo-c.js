@@ -11,11 +11,11 @@ require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
 const mqtt = require('mqtt');
 
 const CLIENT_ID = 'publisher-trafo-c-' + Math.random().toString(16).slice(2, 6);
-const NODE_ID   = 'trafo-c';
-const UPSTREAM  = 'trafo-a';
-const BROKER    = process.env.MQTT_BROKER || 'mqtt://broker.emqx.io:1883';
+const NODE_ID = 'trafo-c';
+const UPSTREAM = 'trafo-a';
+const BROKER = process.env.MQTT_BROKER || 'mqtt://broker.emqx.io:1883';
 
-const LWT_TOPIC   = `gridwatch/${NODE_ID}/lwt`;
+const LWT_TOPIC = `gridwatch/${NODE_ID}/lwt`;
 const LWT_PAYLOAD = JSON.stringify({ nodeId: NODE_ID, status: 'OFFLINE', timestamp: new Date().toISOString() });
 
 console.log(`\n🏪 [TrafoC] Connecting to ${BROKER}...`);
@@ -34,7 +34,7 @@ const client = mqtt.connect(BROKER, connectOptions);
 
 // ─── State ────────────────────────────────────────────────────────────────────
 let upstreamStatus = 'NORMAL';
-let ownStatus      = 'NORMAL';
+let ownStatus = 'NORMAL';
 
 function generateSensorData() {
   const t = Date.now() / 1000;
@@ -56,12 +56,12 @@ function generateSensorData() {
   }
 
   // Residensial: Beban fluktuatif kecil
-  const cycle  = (t % 60) / 60;
-  let beban    = 35 + 20 * Math.sin(cycle * Math.PI) + Math.random() * 5;
-  beban        = Math.min(96, Math.max(20, beban));
+  const cycle = (t % 60) / 60;
+  let beban = 35 + 20 * Math.sin(cycle * Math.PI) + Math.random() * 5;
+  beban = Math.min(96, Math.max(20, beban));
   let tegangan = 220 + (Math.random() - 0.5) * 5;
-  let arus     = 160 + (beban / 100) * 120 + Math.random() * 15;
-  let suhu     = 42 + (beban / 100) * 15 + Math.random() * 3;
+  let arus = 160 + (beban / 100) * 120 + Math.random() * 15;
+  let suhu = 42 + (beban / 100) * 15 + Math.random() * 3;
 
   ownStatus = beban > 85 ? 'WARNING' : 'NORMAL';
 
@@ -69,16 +69,16 @@ function generateSensorData() {
 }
 
 function publishData() {
-  const ts   = new Date().toISOString();
+  const ts = new Date().toISOString();
   const base = { nodeId: NODE_ID, timestamp: ts };
   const data = generateSensorData();
   const daya = +(data.tegangan * data.arus / 1000).toFixed(2);
 
-  client.publish(`gridwatch/${NODE_ID}/tegangan`, JSON.stringify({ ...base, value: data.tegangan, unit: 'V' }),  { qos: 0, retain: true });
-  client.publish(`gridwatch/${NODE_ID}/arus`,     JSON.stringify({ ...base, value: data.arus,     unit: 'A' }),  { qos: 0, retain: true });
-  client.publish(`gridwatch/${NODE_ID}/beban`,    JSON.stringify({ ...base, value: data.beban,    unit: '%' }),  { qos: 0, retain: true });
-  client.publish(`gridwatch/${NODE_ID}/suhu`,     JSON.stringify({ ...base, value: data.suhu,     unit: '°C' }), { qos: 0, retain: true });
-  client.publish(`gridwatch/${NODE_ID}/daya`,     JSON.stringify({ ...base, value: daya,           unit: 'kW' }), { qos: 0, retain: true });
+  client.publish(`gridwatch/${NODE_ID}/tegangan`, JSON.stringify({ ...base, value: data.tegangan, unit: 'V' }), { qos: 0, retain: true });
+  client.publish(`gridwatch/${NODE_ID}/arus`, JSON.stringify({ ...base, value: data.arus, unit: 'A' }), { qos: 0, retain: true });
+  client.publish(`gridwatch/${NODE_ID}/beban`, JSON.stringify({ ...base, value: data.beban, unit: '%' }), { qos: 0, retain: true });
+  client.publish(`gridwatch/${NODE_ID}/suhu`, JSON.stringify({ ...base, value: data.suhu, unit: '°C' }), { qos: 0, retain: true });
+  client.publish(`gridwatch/${NODE_ID}/daya`, JSON.stringify({ ...base, value: daya, unit: 'kW' }), { qos: 0, retain: true });
 
   client.publish(
     `gridwatch/${NODE_ID}/status`,
@@ -114,7 +114,7 @@ client.on('connect', () => {
   client.subscribe(`gridwatch/${UPSTREAM}/status`, { qos: 1 }, (err) => {
     if (!err) console.log(`📥 [TrafoC] Subscribed to ${UPSTREAM}/status`);
   });
-  client.subscribe(`gridwatch/${UPSTREAM}/lwt`, { qos: 1 }, () => {});
+  client.subscribe(`gridwatch/${UPSTREAM}/lwt`, { qos: 1 }, () => { });
   client.subscribe(`gridwatch/kontrol/${NODE_ID}/cmd`, { qos: 2 }, (err) => {
     if (!err) console.log(`📥 [TrafoC] Subscribed to kontrol commands`);
   });
@@ -140,10 +140,10 @@ client.on('message', (topic, message) => {
 
     if (topic === `gridwatch/kontrol/${NODE_ID}/cmd`) {
       const prev = ownStatus;
-      if (payload.command === 'TRIP')    ownStatus = 'ISOLATED';
-      if (payload.command === 'RESET')   ownStatus = ['FAULT','NO_POWER','OFFLINE','ISOLATED'].includes(upstreamStatus) ? 'NO_POWER' : 'NORMAL';
+      if (payload.command === 'TRIP') ownStatus = 'ISOLATED';
+      if (payload.command === 'RESET') ownStatus = ['FAULT', 'NO_POWER', 'OFFLINE', 'ISOLATED'].includes(upstreamStatus) ? 'NO_POWER' : 'NORMAL';
       if (payload.command === 'ISOLATE') ownStatus = 'ISOLATED';
-      if (payload.command === 'FAULT')   ownStatus = 'FAULT';
+      if (payload.command === 'FAULT') ownStatus = 'FAULT';
       console.log(`📨 [TrafoC] Command: ${payload.command} → ${prev} → ${ownStatus}`);
 
       client.publish(
@@ -155,8 +155,8 @@ client.on('message', (topic, message) => {
   } catch (e) { console.error('[TrafoC] Parse error:', e.message); }
 });
 
-client.on('error',     (err) => console.error(`❌ [TrafoC] Error:`, err.message));
-client.on('reconnect', ()    => console.log(`🔄 [TrafoC] Reconnecting...`));
+client.on('error', (err) => console.error(`❌ [TrafoC] Error:`, err.message));
+client.on('reconnect', () => console.log(`🔄 [TrafoC] Reconnecting...`));
 
 // Intentionally no graceful LWT publish on SIGINT
 // → broker akan auto-publish LWT saat koneksi terputus tiba-tiba
