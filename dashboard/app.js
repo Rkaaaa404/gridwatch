@@ -7,47 +7,57 @@
 // ─── Config ───────────────────────────────────────────────────────────────────
 const WS_URL = 'ws://localhost:8080';
 
-// Node definitions: koordinat Surabaya
+// Node definitions: Sumatera Barat (Bukittinggi & Agam)
 const NODES = {
   'gardu-induk': {
-    label: 'Gardu Induk',
+    label: 'GI Bukittinggi',
     icon: 'GI',
-    lat: -7.2975, lng: 112.7440,
-    area: 'Surabaya Pusat',
+    lat: -0.3050, lng: 100.3690,
+    area: 'Bukittinggi',
     level: '150kV → 20kV',
-    role: 'Root Node',
+    role: 'Root Node / Gateway',
     upstream: null,
     color: '#3b82f6',
   },
   'trafo-a': {
-    label: 'Trafo A',
+    label: 'Trafo A (Matur)',
     icon: 'TA',
-    lat: -7.2647, lng: 112.7547,
-    area: 'Gubeng',
+    lat: -0.2720, lng: 100.2810,
+    area: 'Kec. Matur',
     level: '20kV → 380V',
-    role: 'Feeder Area Residensial',
+    role: 'Feeder Kecamatan',
     upstream: 'gardu-induk',
     color: '#06b6d4',
   },
   'trafo-b': {
-    label: 'Trafo B',
+    label: 'Trafo B (P. Lawang)',
     icon: 'TB',
-    lat: -7.2889, lng: 112.7347, // Darmo
-    area: 'Perumahan Darmo',
+    lat: -0.2640, lng: 100.2450,
+    area: 'Puncak Lawang',
     level: '20kV → 380V',
-    role: 'Blok Perumahan 1',
+    role: 'Distribusi Desa',
     upstream: 'trafo-a',
     color: '#8b5cf6',
   },
   'trafo-c': {
-    label: 'Trafo C',
+    label: 'Trafo C (Maninjau)',
     icon: 'TC',
-    lat: -7.3188, lng: 112.7388, // Margorejo
-    area: 'Perumahan Margorejo',
+    lat: -0.2850, lng: 100.2280,
+    area: 'Desa Maninjau',
     level: '20kV → 220V',
-    role: 'Blok Perumahan 2',
+    role: 'Distribusi Tepi Danau',
     upstream: 'trafo-a',
     color: '#f59e0b',
+  },
+  'trafo-d': {
+    label: 'Trafo D (Palembayan)',
+    icon: 'TD',
+    lat: -0.1800, lng: 100.2000,
+    area: 'Pelosok Palembayan',
+    level: '20kV → 220V',
+    role: 'End Node Pelosok (LoRa Relay)',
+    upstream: 'trafo-b',
+    color: '#ec4899',
   },
 };
 
@@ -74,7 +84,7 @@ Object.keys(NODES).forEach(id => {
 });
 
 // ─── Map Init ─────────────────────────────────────────────────────────────────
-const map = L.map('map', { zoomControl: false, attributionControl: false }).setView([-7.295, 112.752], 13);
+const map = L.map('map', { zoomControl: false, attributionControl: false }).setView([-0.250, 100.280], 11);
 
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   maxZoom: 18,
@@ -469,7 +479,7 @@ function updateStats() {
   document.getElementById('msg-total').textContent = state.msgCount;
 
   const online = Object.values(state.nodes).filter(n => ['NORMAL', 'WARNING', 'ISOLATED'].includes(n.status)).length;
-  document.getElementById('nodes-online').textContent = `${online}/4`;
+  document.getElementById('nodes-online').textContent = `${online}/${Object.keys(NODES).length}`;
 }
 
 function updateAlarmBadge() {

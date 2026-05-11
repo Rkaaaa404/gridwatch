@@ -1,8 +1,8 @@
 /**
  * GridWatch — TrafoC Publisher + Subscriber
- * Role: Distribusi Komersial (Tunjungan, Surabaya)
- * Subscribe ke: gridwatch/trafo-b/status
- * Cascade: Jika TrafoB FAULT/NO_POWER/ISOLATED/OFFLINE → NO_POWER
+ * Role: Distribusi Tepi Danau (Maninjau, Agam)
+ * Subscribe ke: gridwatch/trafo-a/status
+ * Cascade: Jika TrafoA FAULT/NO_POWER/ISOLATED/OFFLINE → NO_POWER
  * Status hanya berubah via command atau cascade
  * Note: SIGINT tanpa publish LWT manual → demonstrasikan LWT broker-triggered
  */
@@ -82,7 +82,7 @@ function publishData() {
 
   client.publish(
     `gridwatch/${NODE_ID}/status`,
-    JSON.stringify({ ...base, status: ownStatus, upstreamStatus, role: 'Blok Perumahan 2', area: 'Perumahan Margorejo', level: '20kV→220V' }),
+    JSON.stringify({ ...base, status: ownStatus, upstreamStatus, role: 'Distribusi Tepi Danau', area: 'Desa Maninjau', level: '20kV→220V' }),
     { qos: 1, retain: true }
   );
 
@@ -93,8 +93,8 @@ function publishData() {
         ...base,
         level: ownStatus === 'FAULT' ? 'CRITICAL' : 'WARNING',
         message: ownStatus === 'FAULT'
-          ? 'Trafo C FAULT — pemadaman di Perumahan Margorejo!'
-          : `Trafo C (Margorejo): beban ${data.beban.toFixed(1)}% | suhu ${data.suhu.toFixed(1)}°C`,
+          ? 'Trafo C FAULT — pemadaman di area Maninjau!'
+          : `Trafo C (Maninjau): beban ${data.beban.toFixed(1)}% | suhu ${data.suhu.toFixed(1)}°C`,
         status: ownStatus,
       }),
       { qos: 2, retain: false }

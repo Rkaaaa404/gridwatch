@@ -6,6 +6,7 @@
 
 const { spawn } = require('child_process');
 const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 const BASE = __dirname;
 
@@ -17,6 +18,7 @@ const services = [
   { name: 'TrafoA',       script: 'publishers/trafo-a.js',               color: '\x1b[32m' },
   { name: 'TrafoB',       script: 'publishers/trafo-b.js',               color: '\x1b[96m' },
   { name: 'TrafoC',       script: 'publishers/trafo-c.js',               color: '\x1b[93m' },
+  { name: 'TrafoD',       script: 'publishers/trafo-d.js',               color: '\x1b[95m' },
   { name: 'PusatKontrol', script: 'publishers/pusat-kontrol.js',         color: '\x1b[91m' },
 ];
 
@@ -61,7 +63,7 @@ services.forEach((svc, i) => {
         console.log('\n\x1b[32m' + '═'.repeat(60) + RESET);
         console.log('\x1b[32m  🌐 Dashboard: http://localhost:3000\x1b[0m');
         console.log('\x1b[32m  📡 WebSocket: ws://localhost:8080\x1b[0m');
-        console.log('\x1b[32m  🔗 MQTT Broker: broker.emqx.io:1883\x1b[0m');
+        console.log('\x1b[32m  🔗 MQTT Broker: ' + (process.env.MQTT_BROKER || 'mqtt://broker.emqx.io:1883') + '\x1b[0m');
         console.log('\x1b[32m' + '═'.repeat(60) + RESET + '\n');
       }, 1000);
     }

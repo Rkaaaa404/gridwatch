@@ -1,6 +1,6 @@
 /**
  * GridWatch — TrafoA Publisher + Subscriber
- * Role: Feeder Distribusi Residensial (Gubeng, Surabaya)
+ * Role: Feeder Kecamatan (Matur, Agam)
  * Subscribe ke: gridwatch/gardu-induk/status
  * Cascade: Jika GarduInduk FAULT/ISOLATED/OFFLINE → publish NO_POWER
  * Status diri sendiri hanya berubah via command
@@ -80,7 +80,7 @@ function publishData() {
 
   client.publish(
     `gridwatch/${NODE_ID}/status`,
-    JSON.stringify({ ...base, status: ownStatus, upstreamStatus, role: 'Feeder Area Residensial', area: 'Gubeng', level: '20kV→380V' }),
+    JSON.stringify({ ...base, status: ownStatus, upstreamStatus, role: 'Feeder Kecamatan', area: 'Kec. Matur', level: '20kV→380V' }),
     { qos: 1, retain: true }
   );
 
@@ -91,7 +91,7 @@ function publishData() {
         ...base,
         level: ownStatus === 'FAULT' ? 'CRITICAL' : 'WARNING',
         message: ownStatus === 'FAULT'
-          ? 'Trafo A FAULT — hubung singkat di area Gubeng!'
+          ? 'Trafo A FAULT — pohon tumbang di area Matur!'
           : `Suhu kritis Trafo A: ${data.suhu.toFixed(1)}°C`,
         status: ownStatus,
       }),

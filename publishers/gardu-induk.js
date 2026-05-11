@@ -70,7 +70,7 @@ function publishSensor(data) {
 
   client.publish(
     `gridwatch/${NODE_ID}/status`,
-    JSON.stringify({ ...base, status: operationalStatus, role: 'gardu-induk', area: 'Surabaya Pusat', level: '150kV→20kV' }),
+    JSON.stringify({ ...base, status: operationalStatus, role: 'Root Node / Gateway', area: 'Bukittinggi', level: '150kV→20kV' }),
     { qos: 1, retain: true }
   );
 

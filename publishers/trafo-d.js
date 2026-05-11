@@ -1,23 +1,23 @@
 /**
- * GridWatch — TrafoB Publisher + Subscriber
- * Role: Distribusi Desa (Puncak Lawang, Agam)
- * Subscribe ke: gridwatch/trafo-a/status
- * Cascade: Jika TrafoA FAULT/NO_POWER/ISOLATED/OFFLINE → NO_POWER
+ * GridWatch — TrafoD Publisher + Subscriber
+ * Role: End Node Pelosok (Palembayan, Agam)
+ * Subscribe ke: gridwatch/trafo-b/status
+ * Cascade: Jika TrafoB FAULT/NO_POWER/ISOLATED/OFFLINE → NO_POWER
  * Status hanya berubah via command atau cascade
  */
 
 require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
 const mqtt = require('mqtt');
 
-const CLIENT_ID = 'publisher-trafo-b-' + Math.random().toString(16).slice(2, 6);
-const NODE_ID   = 'trafo-b';
-const UPSTREAM  = 'trafo-a';
+const CLIENT_ID = 'publisher-trafo-d-' + Math.random().toString(16).slice(2, 6);
+const NODE_ID   = 'trafo-d';
+const UPSTREAM  = 'trafo-b';
 const BROKER    = process.env.MQTT_BROKER || 'mqtt://broker.emqx.io:1883';
 
 const LWT_TOPIC   = `gridwatch/${NODE_ID}/lwt`;
 const LWT_PAYLOAD = JSON.stringify({ nodeId: NODE_ID, status: 'OFFLINE', timestamp: new Date().toISOString() });
 
-console.log(`\n🏭 [TrafoB] Connecting to ${BROKER}...`);
+console.log(`\n🏭 [TrafoD] Connecting to ${BROKER}...`);
 
 const connectOptions = {
   clientId: CLIENT_ID,
@@ -86,7 +86,7 @@ function publishData() {
 
   client.publish(
     `gridwatch/${NODE_ID}/status`,
-    JSON.stringify({ ...base, status: ownStatus, upstreamStatus, role: 'Distribusi Desa', area: 'Puncak Lawang', level: '20kV→380V', phase: '3-phase' }),
+    JSON.stringify({ ...base, status: ownStatus, upstreamStatus, role: 'End Node Pelosok (LoRa Relay)', area: 'Pelosok Palembayan', level: '20kV→380V', phase: '3-phase' }),
     { qos: 1, retain: true }
   );
 
@@ -97,7 +97,7 @@ function publishData() {
         ...base,
         level: ownStatus === 'FAULT' ? 'CRITICAL' : 'WARNING',
         message: ownStatus === 'FAULT'
-          ? 'Trafo B FAULT — tanah longsor di Puncak Lawang!'
+          ? 'Trafo B FAULT — jaringan terputus di Palembayan!'
           : data.suhu > 82
           ? `Suhu kritis Trafo B: ${data.suhu.toFixed(1)}°C`
           : `Beban residensial tinggi: ${data.beban.toFixed(1)}% | PF: ${data.powerFactor}`,
@@ -110,19 +110,19 @@ function publishData() {
   client.publish(LWT_TOPIC, JSON.stringify({ nodeId: NODE_ID, status: 'ONLINE', timestamp: ts }), { qos: 1, retain: true });
 
   const icon = { NORMAL: '🟢', WARNING: '🟡', FAULT: '🔴', ISOLATED: '🔒', NO_POWER: '⚫' }[ownStatus] || '❓';
-  console.log(`${icon} [TrafoB] ${ownStatus} | upstream:${upstreamStatus} | beban:${data.beban.toFixed(1)}% | PF:${data.powerFactor}`);
+  console.log(`${icon} [TrafoD] ${ownStatus} | upstream:${upstreamStatus} | beban:${data.beban.toFixed(1)}% | PF:${data.powerFactor}`);
 }
 
 // ─── Event Handlers ───────────────────────────────────────────────────────────
 client.on('connect', () => {
-  console.log(`✅ [TrafoB] Connected! Client ID: ${CLIENT_ID}`);
+  console.log(`✅ [TrafoD] Connected! Client ID: ${CLIENT_ID}`);
 
   client.subscribe(`gridwatch/${UPSTREAM}/status`, { qos: 1 }, (err) => {
-    if (!err) console.log(`📥 [TrafoB] Subscribed to ${UPSTREAM}/status`);
+    if (!err) console.log(`📥 [TrafoD] Subscribed to ${UPSTREAM}/status`);
   });
   client.subscribe(`gridwatch/${UPSTREAM}/lwt`, { qos: 1 }, () => {});
   client.subscribe(`gridwatch/kontrol/${NODE_ID}/cmd`, { qos: 2 }, (err) => {
-    if (!err) console.log(`📥 [TrafoB] Subscribed to kontrol commands`);
+    if (!err) console.log(`📥 [TrafoD] Subscribed to kontrol commands`);
   });
 
   setInterval(publishData, 2000);
@@ -136,12 +136,12 @@ client.on('message', (topic, message) => {
       const prev = upstreamStatus;
       upstreamStatus = payload.status;
       if (prev !== upstreamStatus)
-        console.log(`⚡ [TrafoB] Upstream berubah: ${prev} → ${upstreamStatus}`);
+        console.log(`⚡ [TrafoD] Upstream berubah: ${prev} → ${upstreamStatus}`);
     }
 
     if (topic === `gridwatch/${UPSTREAM}/lwt` && payload.status === 'OFFLINE') {
       upstreamStatus = 'OFFLINE';
-      console.log(`🔴 [TrafoB] Upstream OFFLINE via LWT!`);
+      console.log(`🔴 [TrafoD] Upstream OFFLINE via LWT!`);
     }
 
     if (topic === `gridwatch/kontrol/${NODE_ID}/cmd`) {
@@ -150,7 +150,7 @@ client.on('message', (topic, message) => {
       if (payload.command === 'RESET')   ownStatus = ['FAULT','NO_POWER','OFFLINE','ISOLATED'].includes(upstreamStatus) ? 'NO_POWER' : 'NORMAL';
       if (payload.command === 'ISOLATE') ownStatus = 'ISOLATED';
       if (payload.command === 'FAULT')   ownStatus = 'FAULT';
-      console.log(`📨 [TrafoB] Command: ${payload.command} → ${prev} → ${ownStatus}`);
+      console.log(`📨 [TrafoD] Command: ${payload.command} → ${prev} → ${ownStatus}`);
 
       client.publish(
         `gridwatch/kontrol/${NODE_ID}/ack`,
@@ -158,14 +158,14 @@ client.on('message', (topic, message) => {
         { qos: 2 }
       );
     }
-  } catch (e) { console.error('[TrafoB] Parse error:', e.message); }
+  } catch (e) { console.error('[TrafoD] Parse error:', e.message); }
 });
 
-client.on('error',     (err) => console.error(`❌ [TrafoB] Error:`, err.message));
-client.on('reconnect', ()    => console.log(`🔄 [TrafoB] Reconnecting...`));
+client.on('error',     (err) => console.error(`❌ [TrafoD] Error:`, err.message));
+client.on('reconnect', ()    => console.log(`🔄 [TrafoD] Reconnecting...`));
 
 process.on('SIGINT', () => {
-  console.log('\n🛑 [TrafoB] Shutting down...');
+  console.log('\n🛑 [TrafoD] Shutting down...');
   client.publish(LWT_TOPIC, JSON.stringify({ nodeId: NODE_ID, status: 'OFFLINE', timestamp: new Date().toISOString() }), { qos: 1, retain: true }, () => {
     client.end(); process.exit(0);
   });
