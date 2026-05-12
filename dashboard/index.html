@@ -1,159 +1,188 @@
 <!DOCTYPE html>
 <html lang="id">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>GridWatch — Monitoring Distribusi Trafo Listrik Surabaya</title>
-  <meta name="description" content="Sistem monitoring real-time jaringan trafo distribusi Surabaya berbasis MQTT. Visualisasi fault cascade, alert engine, dan kontrol remote." />
+  <meta name="description"
+    content="Sistem monitoring real-time jaringan trafo distribusi Surabaya berbasis MQTT. Visualisasi fault cascade, alert engine, dan kontrol remote." />
 
   <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <!-- Custom styles -->
   <link rel="stylesheet" href="style.css" />
 </head>
+
 <body>
-<div id="app">
+  <div id="app">
 
-  <!-- ═══ HEADER ═══════════════════════════════════════════════════════ -->
-  <header id="header">
-    <div class="logo">
-      <svg class="icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path>
-      </svg>
-      <div>
-        <span>GridWatch</span>
-        <span class="subtitle">Sistem Monitoring Distribusi Trafo — Surabaya</span>
-      </div>
-    </div>
-    <div class="status-bar">
-      <div id="ws-badge" class="connection-badge disconnected">
-        <span class="dot"></span>
-        <span id="ws-status-text">Connecting...</span>
-      </div>
-      <div class="header-time" id="clock">--:--:--</div>
-    </div>
-  </header>
-
-  <!-- ═══ MAP ══════════════════════════════════════════════════════════ -->
-  <div id="map-area">
-    <div id="map"></div>
-
-    <!-- MQTT Stats Overlay -->
-    <div class="mqtt-stats-overlay">
-      <div class="stat-row"><span class="stat-label">Messages/s</span><span class="stat-value" id="msg-rate">0</span></div>
-      <div class="stat-row"><span class="stat-label">Total rx</span><span class="stat-value" id="msg-total">0</span></div>
-      <div class="stat-row"><span class="stat-label">Active Alarms</span><span class="stat-value" id="alarm-count">0</span></div>
-      <div class="stat-row"><span class="stat-label">Nodes Online</span><span class="stat-value" id="nodes-online">0/4</span></div>
-    </div>
-
-    <!-- Legend -->
-    <div class="map-legend">
-      <h5>Status Node</h5>
-      <div class="legend-item"><div class="legend-dot" style="background:#10b981;box-shadow:0 0 6px #10b981"></div> Normal</div>
-      <div class="legend-item"><div class="legend-dot" style="background:#f59e0b"></div> Warning</div>
-      <div class="legend-item"><div class="legend-dot" style="background:#ef4444"></div> Fault</div>
-      <div class="legend-item"><div class="legend-dot" style="background:#6b7280"></div> Offline / No Power</div>
-      <div class="legend-item"><div class="legend-dot" style="background:#8b5cf6"></div> Isolated</div>
-    </div>
-  </div>
-
-  <!-- ═══ SIDEBAR ═══════════════════════════════════════════════════════ -->
-  <aside id="sidebar">
-    <div class="sidebar-tabs">
-      <button class="sidebar-tab active" id="tab-nodes" onclick="switchTab('nodes')">Nodes</button>
-      <button class="sidebar-tab" id="tab-charts" onclick="switchTab('charts')">Charts</button>
-      <button class="sidebar-tab" id="tab-control" onclick="switchTab('control')">Kontrol</button>
-    </div>
-
-    <!-- Nodes Panel -->
-    <div class="sidebar-panel active" id="nodes-panel">
-      <!-- Node cards injected by JS -->
-    </div>
-
-    <!-- Charts Panel -->
-    <div class="sidebar-panel" id="charts-panel">
-      <div class="chart-container">
-        <div class="chart-title" id="chart-node-label">Pilih node di peta atau daftar</div>
-        <canvas id="chart-tegangan" height="80"></canvas>
-      </div>
-      <div class="chart-container">
-        <div class="chart-title">Arus (A)</div>
-        <canvas id="chart-arus" height="80"></canvas>
-      </div>
-      <div class="chart-container">
-        <div class="chart-title">Suhu (°C)</div>
-        <canvas id="chart-suhu" height="80"></canvas>
-      </div>
-      <div class="chart-container">
-        <div class="chart-title">Beban (%)</div>
-        <canvas id="chart-beban" height="80"></canvas>
-      </div>
-    </div>
-
-    <!-- Control Panel -->
-    <div class="sidebar-panel" id="control-panel">
-      <div class="control-section">
-        <span class="control-label">Target Node</span>
-        <select class="control-select" id="ctrl-node-select">
-          <option value="gardu-induk">Gardu Induk — Surabaya Pusat</option>
-          <option value="trafo-a">Trafo A — Feeder Residensial Gubeng</option>
-          <option value="trafo-b">Trafo B — Perumahan Darmo</option>
-          <option value="trafo-c">Trafo C — Perumahan Margorejo</option>
-        </select>
-        <div class="control-buttons">
-          <button class="ctrl-btn fault"   onclick="sendCommand('FAULT')">FAULT</button>
-          <button class="ctrl-btn trip"    onclick="sendCommand('TRIP')">TRIP</button>
-          <button class="ctrl-btn isolate" onclick="sendCommand('ISOLATE')">ISOLATE</button>
-          <button class="ctrl-btn reset"   onclick="sendCommand('RESET')" style="grid-column:1/-1">RESET (Pulihkan)</button>
+    <!-- ═══ HEADER ═══════════════════════════════════════════════════════ -->
+    <header id="header">
+      <div class="logo">
+        <svg class="icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path>
+        </svg>
+        <div>
+          <span>GridWatch</span>
+          <span class="subtitle">Sistem Monitoring Trafo Distribusi</span>
         </div>
       </div>
+      <div class="status-bar">
+        <div id="ws-badge" class="connection-badge disconnected">
+          <span class="dot"></span>
+          <span id="ws-status-text">Connecting...</span>
+        </div>
+        <div class="header-time" id="clock">--:--:--</div>
+      </div>
+    </header>
 
-      <div class="qos-info">
-        Commands dikirim via <strong>QoS 2</strong> (exactly-once delivery).<br>
-        <strong>FAULT</strong> → Simulasi kerusakan node<br>
-        <strong>TRIP</strong> → Isolasi paksa (switch terbuka)<br>
-        <strong>ISOLATE</strong> → Maintenance mode<br>
-        <strong>RESET</strong> → Pulihkan ke NORMAL
+    <!-- ═══ MAP ══════════════════════════════════════════════════════════ -->
+    <div id="map-area">
+      <div id="map"></div>
+
+      <!-- MQTT Stats Overlay -->
+      <div class="mqtt-stats-overlay">
+        <div class="stat-row"><span class="stat-label">Messages/s</span><span class="stat-value" id="msg-rate">0</span>
+        </div>
+        <div class="stat-row"><span class="stat-label">Total rx</span><span class="stat-value" id="msg-total">0</span>
+        </div>
+        <div class="stat-row"><span class="stat-label">Active Alarms</span><span class="stat-value"
+            id="alarm-count">0</span></div>
+        <div class="stat-row"><span class="stat-label">Nodes Online</span><span class="stat-value"
+            id="nodes-online">0/4</span></div>
       </div>
 
-      <div class="control-section">
-        <span class="control-label">MQTT Features Active</span>
-        <div class="mqtt-features">
-          <div class="mqtt-feature-row"><span class="feat-name">QoS 0 — Sensor</span><span class="feat-val">tegangan/arus/suhu</span></div>
-          <div class="mqtt-feature-row"><span class="feat-name">QoS 1 — Status</span><span class="feat-val">status/lwt</span></div>
-          <div class="mqtt-feature-row"><span class="feat-name">QoS 2 — Alarm</span><span class="feat-val">alarm/cmd/ack</span></div>
-          <div class="mqtt-feature-row"><span class="feat-name">Retain</span><span class="feat-val">semua sensor & status</span></div>
-          <div class="mqtt-feature-row"><span class="feat-name">LWT</span><span class="feat-val">setiap node</span></div>
-          <div class="mqtt-feature-row"><span class="feat-name">Wildcard +</span><span class="feat-val">gridwatch/+/status</span></div>
-          <div class="mqtt-feature-row"><span class="feat-name">Wildcard #</span><span class="feat-val">gridwatch/#</span></div>
-          <div class="mqtt-feature-row"><span class="feat-name">Persistent Sess</span><span class="feat-val">AlertEngine</span></div>
+      <!-- Legend -->
+      <div class="map-legend">
+        <h5>Status Node</h5>
+        <div class="legend-item">
+          <div class="legend-dot" style="background:#10b981;box-shadow:0 0 6px #10b981"></div> Normal
+        </div>
+        <div class="legend-item">
+          <div class="legend-dot" style="background:#f59e0b"></div> Warning
+        </div>
+        <div class="legend-item">
+          <div class="legend-dot" style="background:#ef4444"></div> Fault
+        </div>
+        <div class="legend-item">
+          <div class="legend-dot" style="background:#6b7280"></div> Offline / No Power
+        </div>
+        <div class="legend-item">
+          <div class="legend-dot" style="background:#8b5cf6"></div> Isolated
         </div>
       </div>
     </div>
-  </aside>
 
-  <!-- ═══ EVENT LOG ════════════════════════════════════════════════════ -->
-  <div id="log-area">
-    <div class="log-header">
-      <h4>Event Log &amp; Alarm</h4>
-      <div style="display:flex;gap:8px;align-items:center">
-        <span class="log-badge" id="alarm-badge">0 alarms</span>
-        <button onclick="clearLog()" style="background:none;border:1px solid var(--border-color);border-radius:4px;color:var(--text-muted);font-size:10px;padding:2px 8px;cursor:pointer">Clear</button>
+    <!-- ═══ SIDEBAR ═══════════════════════════════════════════════════════ -->
+    <aside id="sidebar">
+      <div class="sidebar-tabs">
+        <button class="sidebar-tab active" id="tab-nodes" onclick="switchTab('nodes')">Nodes</button>
+        <button class="sidebar-tab" id="tab-charts" onclick="switchTab('charts')">Charts</button>
+        <button class="sidebar-tab" id="tab-control" onclick="switchTab('control')">Kontrol</button>
       </div>
+
+      <!-- Nodes Panel -->
+      <div class="sidebar-panel active" id="nodes-panel">
+        <!-- Node cards injected by JS -->
+      </div>
+
+      <!-- Charts Panel -->
+      <div class="sidebar-panel" id="charts-panel">
+        <div class="chart-container">
+          <div class="chart-title" id="chart-node-label">Pilih node di peta atau daftar</div>
+          <canvas id="chart-tegangan" height="80"></canvas>
+        </div>
+        <div class="chart-container">
+          <div class="chart-title">Arus (A)</div>
+          <canvas id="chart-arus" height="80"></canvas>
+        </div>
+        <div class="chart-container">
+          <div class="chart-title">Suhu (°C)</div>
+          <canvas id="chart-suhu" height="80"></canvas>
+        </div>
+        <div class="chart-container">
+          <div class="chart-title">Beban (%)</div>
+          <canvas id="chart-beban" height="80"></canvas>
+        </div>
+      </div>
+
+      <!-- Control Panel -->
+      <div class="sidebar-panel" id="control-panel">
+        <div class="control-section">
+          <span class="control-label">Target Node</span>
+          <select class="control-select" id="ctrl-node-select">
+            <option value="gardu-induk">Gardu Induk — Surabaya Pusat</option>
+            <option value="trafo-a">Trafo A — Feeder Residensial Gubeng</option>
+            <option value="trafo-b">Trafo B — Perumahan Darmo</option>
+            <option value="trafo-c">Trafo C — Perumahan Margorejo</option>
+          </select>
+          <div class="control-buttons">
+            <button class="ctrl-btn fault" onclick="sendCommand('FAULT')">FAULT</button>
+            <button class="ctrl-btn trip" onclick="sendCommand('TRIP')">TRIP</button>
+            <button class="ctrl-btn isolate" onclick="sendCommand('ISOLATE')">ISOLATE</button>
+            <button class="ctrl-btn reset" onclick="sendCommand('RESET')" style="grid-column:1/-1">RESET
+              (Pulihkan)</button>
+          </div>
+        </div>
+
+        <div class="qos-info">
+          Commands dikirim via <strong>QoS 2</strong> (exactly-once delivery).<br>
+          <strong>FAULT</strong> → Simulasi kerusakan node<br>
+          <strong>TRIP</strong> → Isolasi paksa (switch terbuka)<br>
+          <strong>ISOLATE</strong> → Maintenance mode<br>
+          <strong>RESET</strong> → Pulihkan ke NORMAL
+        </div>
+
+        <div class="control-section">
+          <span class="control-label">MQTT Features Active</span>
+          <div class="mqtt-features">
+            <div class="mqtt-feature-row"><span class="feat-name">QoS 0 — Sensor</span><span
+                class="feat-val">tegangan/arus/suhu</span></div>
+            <div class="mqtt-feature-row"><span class="feat-name">QoS 1 — Status</span><span
+                class="feat-val">status/lwt</span></div>
+            <div class="mqtt-feature-row"><span class="feat-name">QoS 2 — Alarm</span><span
+                class="feat-val">alarm/cmd/ack</span></div>
+            <div class="mqtt-feature-row"><span class="feat-name">Retain</span><span class="feat-val">semua sensor &
+                status</span></div>
+            <div class="mqtt-feature-row"><span class="feat-name">LWT</span><span class="feat-val">setiap node</span>
+            </div>
+            <div class="mqtt-feature-row"><span class="feat-name">Wildcard +</span><span
+                class="feat-val">gridwatch/+/status</span></div>
+            <div class="mqtt-feature-row"><span class="feat-name">Wildcard #</span><span
+                class="feat-val">gridwatch/#</span></div>
+            <div class="mqtt-feature-row"><span class="feat-name">Persistent Sess</span><span
+                class="feat-val">AlertEngine</span></div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ═══ EVENT LOG ════════════════════════════════════════════════════ -->
+    <div id="log-area">
+      <div class="log-header">
+        <h4>Event Log &amp; Alarm</h4>
+        <div style="display:flex;gap:8px;align-items:center">
+          <span class="log-badge" id="alarm-badge">0 alarms</span>
+          <button onclick="clearLog()"
+            style="background:none;border:1px solid var(--border-color);border-radius:4px;color:var(--text-muted);font-size:10px;padding:2px 8px;cursor:pointer">Clear</button>
+        </div>
+      </div>
+      <div id="log-scroll"></div>
     </div>
-    <div id="log-scroll"></div>
+
   </div>
 
-</div>
+  <!-- Toast container -->
+  <div id="toast-container"></div>
 
-<!-- Toast container -->
-<div id="toast-container"></div>
-
-<!-- Leaflet JS -->
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<!-- Chart.js -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
-<!-- App logic -->
-<script src="app.js"></script>
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+  <!-- App logic -->
+  <script src="app.js"></script>
 </body>
+
 </html>

@@ -254,17 +254,20 @@ function processNodeUpdate(nodeId, dataType, payload) {
       const label = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
       if (!cd.labels.includes(label) || cd.labels.length === 0) {
         cd.labels.push(label);
-        cd[dataType].push(payload.value);
+        
+        // Inisialisasi slot kosong untuk semua metrik agar array selalu sama panjang
+        ['tegangan', 'arus', 'suhu', 'beban'].forEach(k => cd[k].push(null));
+
         // Keep max 30 data points
         if (cd.labels.length > 30) {
           cd.labels.shift();
-          ['tegangan', 'arus', 'suhu', 'beban'].forEach(k => { if (cd[k].length > 30) cd[k].shift(); });
+          ['tegangan', 'arus', 'suhu', 'beban'].forEach(k => cd[k].shift());
         }
-      } else {
-        // Update last point
-        const lastIdx = cd.labels.length - 1;
-        cd[dataType][lastIdx] = payload.value;
       }
+      
+      // Isi data pada slot waktu (label) yang sama
+      const lastIdx = cd.labels.length - 1;
+      cd[dataType][lastIdx] = payload.value;
 
       if (state.selectedNode === nodeId) {
         updateCharts(nodeId);
@@ -432,6 +435,7 @@ function createChart(canvasId, label, color) {
         pointHoverRadius: 4,
         fill: true,
         tension: 0.4,
+        spanGaps: true,
       }],
     },
     options: {
