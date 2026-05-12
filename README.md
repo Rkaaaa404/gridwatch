@@ -4,11 +4,12 @@ GridWatch adalah simulasi sistem monitoring real-time untuk jaringan distribusi 
 
 ## Konsep Aplikasi
 
-Pada jaringan kelistrikan nyata, energi dari Gardu Induk (tegangan tinggi) diturunkan ke Trafo Feeder, lalu didistribusikan ke Trafo Distribusi sebelum sampai ke konsumen akhir. Topologi jaringan ini membentuk hierarki (tree/chain). Masalah umum yang terjadi adalah ketika satu titik di tengah rantai mengalami gangguan (fault), seluruh node di bawahnya (downstream) akan kehilangan pasokan listrik. 
+Pada jaringan kelistrikan nyata, energi dari Gardu Induk (tegangan tinggi) diturunkan ke Trafo Feeder, lalu didistribusikan ke Trafo Distribusi sebelum sampai ke konsumen akhir. Topologi jaringan ini membentuk hierarki (tree/chain). Masalah umum yang terjadi adalah ketika satu titik di tengah rantai mengalami gangguan (fault), seluruh node di bawahnya (downstream) akan kehilangan pasokan listrik.
 
-GridWatch menyimulasikan sistem monitoring tersebut dengan memanfaatkan **protokol MQTT**. Setiap trafo dipresentasikan sebagai *node* yang saling terhubung sesuai dengan topologinya. 
+GridWatch menyimulasikan sistem monitoring tersebut dengan memanfaatkan **protokol MQTT**. Setiap trafo dipresentasikan sebagai *node* yang saling terhubung sesuai dengan topologinya.
 
 Fitur utama aplikasi ini:
+
 1. **Cascade Fault Simulation**: Jika satu node di hulu (upstream) mengalami gangguan atau pemutusan daya, node di hilirnya (downstream) akan secara otomatis mendeteksi ketiadaan daya dan ikut melaporkan status pemadaman (NO_POWER).
 2. **Auto-Recovery**: Sistem dapat pulih secara otomatis di sisi downstream ketika koneksi/pasokan daya dari upstream kembali normal.
 3. **Real-Time Monitoring Dashboard**: Antarmuka web yang menampilkan peta distribusi, status kesehatan node (tegangan, arus, suhu, dan beban), log aktivitas, serta grafik historis secara real-time.
@@ -18,22 +19,23 @@ Fitur utama aplikasi ini:
 
 ## Alur Komunikasi dan Topologi (Node Flow)
 
-Sistem ini mensimulasikan jaringan distribusi wilayah Sumatra Barat (Bukittinggi dan Kabupaten Agam) dengan skema *hierarchical tree* yang juga mengadaptasi arsitektur jaringan *mesh* (seperti LoRa relay) untuk node pelosok.
+Sistem ini mensimulasikan jaringan distribusi wilayah Sumatra Barat (Bukittinggi dan Kabupaten Agam) dengan skema *hierarchical tree* yang mengadaptasi arsitektur komunikasi data berjenjang (*multi-hop data relay*) untuk node di area pelosok.
 
-**Alur Ketergantungan Daya (Cascade Flow):**
+**Alur Ketergantungan Daya & Komunikasi Data (Relay Flow):**
+
 ```text
-Gardu Induk (Pusat)
- └── Trafo A
-      ├── Trafo B
-      │    └── Trafo D
-      └── Trafo C
+Gardu Induk (Pusat)  <-- [Menerima semua data akhir]
+ └── Trafo A         <-- [Meneruskan data dari B & C ke Pusat]
+      ├── Trafo B    <-- [Meneruskan data D beserta datanya sendiri ke A]
+      │    └── Trafo D <-- [Mengirim data ke B (Relay Node)]
+      └── Trafo C    <-- [Mengirim data ke A]
 ```
 
 **Daftar Node dan Role:**
 
 1. **Gardu Induk** *(Bukittinggi)*
    - **Role:** Root Node / Gateway utama jaringan (150kV ke 20kV).
-   - **Karakteristik:** Sumber daya utama, tidak bergantung pada node manapun. 
+   - **Karakteristik:** Sumber daya utama, tidak bergantung pada node manapun.
 
 2. **Trafo A** *(Kec. Matur)*
    - **Role:** Feeder Kecamatan (20kV ke 380V).
@@ -48,10 +50,11 @@ Gardu Induk (Pusat)
    - **Karakteristik:** Bergantung secara paralel dengan Trafo B, mendapatkan daya dari Trafo A.
 
 5. **Trafo D** *(Palembayan)*
-   - **Role:** End Node Pelosok (LoRa Relay / Mesh Topology).
-   - **Karakteristik:** Bergantung pada Trafo B. Mensimulasikan area terpencil yang koneksinya (dan dayanya) di-*relay* melalui Trafo B.
+   - **Role:** End Node Pelosok (Multi-hop Data Relay).
+   - **Karakteristik:** Mensimulasikan node di area terpencil. **Data komunikasi dari Trafo D tidak dikirim langsung ke pusat, melainkan dikirim (di-relay) ke node atasnya (Trafo B).** Trafo B kemudian bertugas meneruskan data Trafo D beserta datanya sendiri ke node atasnya lagi (Trafo A), hingga akhirnya seluruh data terkumpul di Gardu Induk. (Bergantung juga secara daya pada Trafo B).
 
 Selain node trafo (Publisher), terdapat role lain berupa:
+
 - **Alert Engine (Subscriber)**: Berjalan di latar belakang memantau aliran data, mendeteksi anomali suhu/beban, dan menyebarkan alarm peringatan/kritis.
 - **Dashboard Subscriber**: Berfungsi sebagai *bridge* (jembatan) antara broker MQTT dengan protokol WebSocket untuk meneruskan data secara langsung ke Web Browser UI.
 
@@ -59,28 +62,38 @@ Selain node trafo (Publisher), terdapat role lain berupa:
 
 ## List Topik MQTT
 
-Sistem ini mendemonstrasikan variasi penggunaan *Quality of Service (QoS)* dan *Retained Messages* pada topik yang berbeda:
+Sistem ini menggunakan arsitektur topik ganda (Dual-Topic Architecture) untuk membedakan jalur komunikasi internal (relay estafet antar-node) dengan jalur komunikasi publik (ke pusat/dashboard).
 
-### 1. Topik Sensor / Telemetri (QoS 0, Retain: True)
-Digunakan untuk data kontinu. Hilangnya sebagian kecil pesan tidak memengaruhi kestabilan sistem. Pesan disimpan (retain) agar *subscriber* baru langsung mendapat data terakhir.
+### A. Topik Komunikasi Relay (Internal Uplink)
+
+Digunakan khusus untuk komunikasi antar node dari hilir ke hulu. Node bawah tidak mem-publish data langsung ke pusat, melainkan "menitipkan" data ke node atasnya.
+
+- **Format:** `relay/[upstreamId]/rx/[nodeId]/[jenis_data]`
+- **Contoh:** `relay/trafo-b/rx/trafo-d/tegangan` (Trafo D mengirim data ke Trafo B).
+- **Logika:** Node perantara (seperti Trafo A dan B) melakukan *subscribe* ke `relay/[id-mereka]/rx/#` untuk mendengarkan data dari bawahannya, lalu mengopernya (*forward*) ke atasan mereka. Gardu Induk sebagai Gateway bertugas menerima estafet terakhir dan menerjemahkannya kembali menjadi topik publik (`gridwatch/...`).
+
+### B. Topik Publik / Pusat (Dashboard & Subscribers)
+
+Topik akhir yang digunakan oleh Dashboard, Alert Engine, dan Pusat Kontrol.
+
+**1. Topik Sensor / Telemetri (QoS 0, Retain: True)**
+Digunakan untuk data kontinu.
 - `gridwatch/[nodeId]/tegangan` : Nilai tegangan (V)
 - `gridwatch/[nodeId]/arus` : Nilai arus (A)
 - `gridwatch/[nodeId]/beban` : Persentase beban (%)
 - `gridwatch/[nodeId]/suhu` : Suhu operasional trafo (°C)
 - `gridwatch/[nodeId]/daya` : Daya aktif (kW)
 
-### 2. Topik Status & LWT (QoS 1, Retain: True)
-Menjamin pengiriman minimal satu kali agar transisi status operasional terekam sistem.
+**2. Topik Status & LWT (QoS 1, Retain: True)**
+Menjamin pengiriman agar transisi status operasional terekam sistem.
 - `gridwatch/[nodeId]/status` : Menyimpan state saat ini (`NORMAL`, `WARNING`, `FAULT`, `NO_POWER`, dll), role, dan info upstream.
-- `gridwatch/[nodeId]/lwt` : Pesan *Last Will and Testament* (LWT) yang otomatis dipublikasikan broker dengan status `OFFLINE` jika program publisher mendadak mati / koneksi terputus.
+- `gridwatch/[nodeId]/lwt` : Pesan *Last Will and Testament* (LWT) otomatis saat node mati/terputus.
 
-### 3. Topik Command & Alarm (QoS 2, Retain: False)
-Tingkat keandalan paling tinggi untuk pesan-pesan kritikal agar tidak ada perintah yang hilang atau dieksekusi ganda.
-- `gridwatch/kontrol/[nodeId]/cmd` : Menerima perintah jarak jauh seperti `TRIP`, `RESET`, `ISOLATE`, `FAULT`.
-- `gridwatch/kontrol/[nodeId]/ack` : Konfirmasi pengakuan (acknowledgment) bahwa trafo telah mengeksekusi perintah.
+**3. Topik Command & Alarm (QoS 2, Retain: False)**
+Tingkat keandalan tertinggi untuk pesan kritikal (Control Downlink & Alarm).
+- `gridwatch/kontrol/[nodeId]/cmd` : Menerima perintah jarak jauh (`TRIP`, `RESET`, `ISOLATE`, `FAULT`). Dikirim langsung via topik sentral agar segera dieksekusi tanpa delay relay.
+- `gridwatch/kontrol/[nodeId]/ack` : Konfirmasi eksekusi perintah (acknowledgment).
 - `gridwatch/[nodeId]/alarm` : Publikasi pesan kritis / bahaya dari trafo ke *Alert Engine* atau *Dashboard*.
-
-*(Catatan: `[nodeId]` diganti dengan ID masing-masing node seperti `gardu-induk`, `trafo-a`, `trafo-b`, `trafo-c`, `trafo-d`)*
 
 ---
 
@@ -94,20 +107,23 @@ Tingkat keandalan paling tinggi untuk pesan-pesan kritikal agar tidak ada perint
 ## Cara Menjalankan Aplikasi
 
 1. **Persiapan Folder:**
+
    ```bash
    cd gridwatch
    ```
 
 2. **Instalasi Dependensi:**
+
    ```bash
    npm install
    ```
 
-3. **Konfigurasi Cloud (Opsional):** 
-   Ubah file `.env` jika menggunakan MQTT Broker khusus (HiveMQ, dll) yang membutuhkan kredensial `MQTT_BROKER`, `MQTT_USERNAME`, dan `MQTT_PASSWORD`.
+3. **Konfigurasi Cloud:**
+   Menggunakan MQTT Broker HiveMQ ang membutuhkan kredensial
 
 4. **Jalankan Aplikasi Utama:**
    Script di bawah akan menyalakan web server, subscriber, dan semua publisher node secara bersamaan:
+
    ```bash
    node run-all.js
    ```

@@ -15,7 +15,7 @@ const NODE_ID = 'trafo-c';
 const UPSTREAM = 'trafo-a';
 const BROKER = process.env.MQTT_BROKER || 'mqtt://broker.emqx.io:1883';
 
-const LWT_TOPIC = `gridwatch/${NODE_ID}/lwt`;
+const LWT_TOPIC = `relay/${UPSTREAM}/rx/${NODE_ID}/lwt`;
 const LWT_PAYLOAD = JSON.stringify({ nodeId: NODE_ID, status: 'OFFLINE', timestamp: new Date().toISOString() });
 
 console.log(`\n🏪 [TrafoC] Connecting to ${BROKER}...`);
@@ -74,21 +74,22 @@ function publishData() {
   const data = generateSensorData();
   const daya = +(data.tegangan * data.arus / 1000).toFixed(2);
 
-  client.publish(`gridwatch/${NODE_ID}/tegangan`, JSON.stringify({ ...base, value: data.tegangan, unit: 'V' }), { qos: 0, retain: true });
-  client.publish(`gridwatch/${NODE_ID}/arus`, JSON.stringify({ ...base, value: data.arus, unit: 'A' }), { qos: 0, retain: true });
-  client.publish(`gridwatch/${NODE_ID}/beban`, JSON.stringify({ ...base, value: data.beban, unit: '%' }), { qos: 0, retain: true });
-  client.publish(`gridwatch/${NODE_ID}/suhu`, JSON.stringify({ ...base, value: data.suhu, unit: '°C' }), { qos: 0, retain: true });
-  client.publish(`gridwatch/${NODE_ID}/daya`, JSON.stringify({ ...base, value: daya, unit: 'kW' }), { qos: 0, retain: true });
+  const PUB_BASE = `relay/${UPSTREAM}/rx/${NODE_ID}`;
+  client.publish(`${PUB_BASE}/tegangan`, JSON.stringify({ ...base, value: data.tegangan, unit: 'V' }), { qos: 0, retain: true });
+  client.publish(`${PUB_BASE}/arus`, JSON.stringify({ ...base, value: data.arus, unit: 'A' }), { qos: 0, retain: true });
+  client.publish(`${PUB_BASE}/beban`, JSON.stringify({ ...base, value: data.beban, unit: '%' }), { qos: 0, retain: true });
+  client.publish(`${PUB_BASE}/suhu`, JSON.stringify({ ...base, value: data.suhu, unit: '°C' }), { qos: 0, retain: true });
+  client.publish(`${PUB_BASE}/daya`, JSON.stringify({ ...base, value: daya, unit: 'kW' }), { qos: 0, retain: true });
 
   client.publish(
-    `gridwatch/${NODE_ID}/status`,
+    `${PUB_BASE}/status`,
     JSON.stringify({ ...base, status: ownStatus, upstreamStatus, role: 'Distribusi Tepi Danau', area: 'Desa Maninjau', level: '20kV→220V' }),
     { qos: 1, retain: true }
   );
 
   if (ownStatus === 'FAULT' || data.beban > 88 || data.suhu > 80) {
     client.publish(
-      `gridwatch/${NODE_ID}/alarm`,
+      `${PUB_BASE}/alarm`,
       JSON.stringify({
         ...base,
         level: ownStatus === 'FAULT' ? 'CRITICAL' : 'WARNING',
@@ -118,11 +119,20 @@ client.on('connect', () => {
   client.subscribe(`gridwatch/kontrol/${NODE_ID}/cmd`, { qos: 2 }, (err) => {
     if (!err) console.log(`📥 [TrafoC] Subscribed to kontrol commands`);
   });
+  client.subscribe(`relay/${NODE_ID}/rx/#`, { qos: 1 }, (err) => {
+    if (!err) console.log(`📥 [TrafoC] Subscribed to relay from children`);
+  });
 
   setInterval(publishData, 4000);
 });
 
 client.on('message', (topic, message) => {
+  if (topic.startsWith(`relay/${NODE_ID}/rx/`)) {
+    const forwardTopic = topic.replace(`relay/${NODE_ID}/rx/`, `relay/${UPSTREAM}/rx/`);
+    client.publish(forwardTopic, message);
+    return;
+  }
+
   try {
     const payload = JSON.parse(message.toString());
 

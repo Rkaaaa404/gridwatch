@@ -14,7 +14,7 @@ const NODE_ID   = 'trafo-d';
 const UPSTREAM  = 'trafo-b';
 const BROKER    = process.env.MQTT_BROKER || 'mqtt://broker.emqx.io:1883';
 
-const LWT_TOPIC   = `gridwatch/${NODE_ID}/lwt`;
+const LWT_TOPIC   = `relay/${UPSTREAM}/rx/${NODE_ID}/lwt`;
 const LWT_PAYLOAD = JSON.stringify({ nodeId: NODE_ID, status: 'OFFLINE', timestamp: new Date().toISOString() });
 
 console.log(`\n🏭 [TrafoD] Connecting to ${BROKER}...`);
@@ -78,21 +78,22 @@ function publishData() {
   const data = generateSensorData();
   const daya = +(data.tegangan * data.arus * (data.powerFactor || 1) * Math.sqrt(3) / 1000).toFixed(2);
 
-  client.publish(`gridwatch/${NODE_ID}/tegangan`, JSON.stringify({ ...base, value: data.tegangan, unit: 'V', phase: '3-phase' }), { qos: 0, retain: true });
-  client.publish(`gridwatch/${NODE_ID}/arus`,     JSON.stringify({ ...base, value: data.arus,     unit: 'A' }),  { qos: 0, retain: true });
-  client.publish(`gridwatch/${NODE_ID}/beban`,    JSON.stringify({ ...base, value: data.beban,    unit: '%' }),  { qos: 0, retain: true });
-  client.publish(`gridwatch/${NODE_ID}/suhu`,     JSON.stringify({ ...base, value: data.suhu,     unit: '°C' }), { qos: 0, retain: true });
-  client.publish(`gridwatch/${NODE_ID}/daya`,     JSON.stringify({ ...base, value: daya, unit: 'kW', powerFactor: data.powerFactor }), { qos: 0, retain: true });
+  const PUB_BASE = `relay/${UPSTREAM}/rx/${NODE_ID}`;
+  client.publish(`${PUB_BASE}/tegangan`, JSON.stringify({ ...base, value: data.tegangan, unit: 'V', phase: '3-phase' }), { qos: 0, retain: true });
+  client.publish(`${PUB_BASE}/arus`,     JSON.stringify({ ...base, value: data.arus,     unit: 'A' }),  { qos: 0, retain: true });
+  client.publish(`${PUB_BASE}/beban`,    JSON.stringify({ ...base, value: data.beban,    unit: '%' }),  { qos: 0, retain: true });
+  client.publish(`${PUB_BASE}/suhu`,     JSON.stringify({ ...base, value: data.suhu,     unit: '°C' }), { qos: 0, retain: true });
+  client.publish(`${PUB_BASE}/daya`,     JSON.stringify({ ...base, value: daya, unit: 'kW', powerFactor: data.powerFactor }), { qos: 0, retain: true });
 
   client.publish(
-    `gridwatch/${NODE_ID}/status`,
+    `${PUB_BASE}/status`,
     JSON.stringify({ ...base, status: ownStatus, upstreamStatus, role: 'End Node Pelosok (LoRa Relay)', area: 'Pelosok Palembayan', level: '20kV→380V', phase: '3-phase' }),
     { qos: 1, retain: true }
   );
 
   if (ownStatus === 'FAULT' || data.beban > 88 || data.suhu > 82) {
     client.publish(
-      `gridwatch/${NODE_ID}/alarm`,
+      `${PUB_BASE}/alarm`,
       JSON.stringify({
         ...base,
         level: ownStatus === 'FAULT' ? 'CRITICAL' : 'WARNING',

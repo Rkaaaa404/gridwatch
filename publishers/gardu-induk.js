@@ -103,11 +103,20 @@ client.on('connect', () => {
   client.subscribe(`gridwatch/kontrol/${NODE_ID}/cmd`, { qos: 2 }, (err) => {
     if (!err) console.log(`📥 [GarduInduk] Subscribed to kontrol commands`);
   });
+  client.subscribe(`relay/${NODE_ID}/rx/#`, { qos: 1 }, (err) => {
+    if (!err) console.log(`📥 [GarduInduk] Subscribed to relay from children`);
+  });
 
   setInterval(() => publishSensor(generateSensorData()), 2000);
 });
 
 client.on('message', (topic, message) => {
+  if (topic.startsWith(`relay/${NODE_ID}/rx/`)) {
+    const forwardTopic = topic.replace(`relay/${NODE_ID}/rx/`, `gridwatch/`);
+    client.publish(forwardTopic, message);
+    return;
+  }
+
   try {
     const payload = JSON.parse(message.toString());
     if (topic === `gridwatch/kontrol/${NODE_ID}/cmd`) {
