@@ -2,17 +2,13 @@
  * GridWatch — PusatKontrol Publisher (Command Center)
  * Role: Mengirim remote command ke node
  * QoS 2 mandatory — TRIP/RESET/FAULT/ISOLATE tidak boleh hilang/duplikat
- *
- * TIDAK ada skenario otomatis — semua command manual dari:
- *   1. stdin: ketik "FAULT trafo-a", "TRIP trafo-b", "RESET gardu-induk", dll
- *   2. Dashboard UI (diteruskan via dashboard-subscriber)
  */
 
 require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
 const mqtt = require('mqtt');
 
 const CLIENT_ID = 'publisher-kontrol-' + Math.random().toString(16).slice(2, 6);
-const BROKER    = process.env.MQTT_BROKER || 'mqtt://broker.emqx.io:1883';
+const BROKER = process.env.MQTT_BROKER || 'mqtt://broker.emqx.io:1883';
 
 console.log(`\n🎛️  [PusatKontrol] Connecting to ${BROKER}...`);
 
@@ -28,18 +24,18 @@ if (process.env.MQTT_PASSWORD) connectOptions.password = process.env.MQTT_PASSWO
 const client = mqtt.connect(BROKER, connectOptions);
 
 const VALID_NODES = ['gardu-induk', 'trafo-a', 'trafo-b', 'trafo-c'];
-const VALID_CMDS  = ['TRIP', 'RESET', 'ISOLATE', 'FAULT'];
+const VALID_CMDS = ['TRIP', 'RESET', 'ISOLATE', 'FAULT'];
 
 // ─── Kirim Command ────────────────────────────────────────────────────────────
 function sendCommand(nodeId, command, reason = 'Manual command') {
-  const topic   = `gridwatch/kontrol/${nodeId}/cmd`;
+  const topic = `gridwatch/kontrol/${nodeId}/cmd`;
   const payload = JSON.stringify({
-    from:      'pusat-kontrol',
+    from: 'pusat-kontrol',
     nodeId,
     command,
     reason,
     timestamp: new Date().toISOString(),
-    operator:  'Operator',
+    operator: 'Operator',
   });
 
   client.publish(topic, payload, { qos: 2 }, (err) => {
@@ -119,11 +115,11 @@ client.on('message', (topic, message) => {
       const lvl = payload.level === 'CRITICAL' ? '🔴 CRITICAL' : '🟡 WARNING';
       console.log(`🚨 [ALARM] [${lvl}] ${payload.nodeId}: ${payload.message}`);
     }
-  } catch (e) {}
+  } catch (e) { }
 });
 
-client.on('error',     (err) => console.error(`❌ [PusatKontrol] Error:`, err.message));
-client.on('reconnect', ()    => console.log(`🔄 [PusatKontrol] Reconnecting...`));
+client.on('error', (err) => console.error(`❌ [PusatKontrol] Error:`, err.message));
+client.on('reconnect', () => console.log(`🔄 [PusatKontrol] Reconnecting...`));
 
 process.on('SIGINT', () => {
   console.log('\n🛑 [PusatKontrol] Shutting down...');

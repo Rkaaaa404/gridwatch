@@ -3,8 +3,6 @@
  * Role: Distribusi Tepi Danau (Maninjau, Agam)
  * Subscribe ke: gridwatch/trafo-a/status
  * Cascade: Jika TrafoA FAULT/NO_POWER/ISOLATED/OFFLINE → NO_POWER
- * Status hanya berubah via command atau cascade
- * Note: SIGINT tanpa publish LWT manual → demonstrasikan LWT broker-triggered
  */
 
 require('dotenv').config({ path: require('path').join(__dirname, '../.env') });

@@ -3,18 +3,17 @@
  * Role: Feeder Kecamatan (Matur, Agam)
  * Subscribe ke: gridwatch/gardu-induk/status
  * Cascade: Jika GarduInduk FAULT/ISOLATED/OFFLINE → publish NO_POWER
- * Status diri sendiri hanya berubah via command
  */
 
 require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
 const mqtt = require('mqtt');
 
 const CLIENT_ID = 'publisher-trafo-a-' + Math.random().toString(16).slice(2, 6);
-const NODE_ID   = 'trafo-a';
-const UPSTREAM  = 'gardu-induk';
-const BROKER    = process.env.MQTT_BROKER || 'mqtt://broker.emqx.io:1883';
+const NODE_ID = 'trafo-a';
+const UPSTREAM = 'gardu-induk';
+const BROKER = process.env.MQTT_BROKER || 'mqtt://broker.emqx.io:1883';
 
-const LWT_TOPIC   = `relay/${UPSTREAM}/rx/${NODE_ID}/lwt`;
+const LWT_TOPIC = `relay/${UPSTREAM}/rx/${NODE_ID}/lwt`;
 const LWT_PAYLOAD = JSON.stringify({ nodeId: NODE_ID, status: 'OFFLINE', timestamp: new Date().toISOString() });
 
 console.log(`\n🔌 [TrafoA] Connecting to ${BROKER}...`);
@@ -33,7 +32,7 @@ const client = mqtt.connect(BROKER, connectOptions);
 
 // ─── State ────────────────────────────────────────────────────────────────────
 let upstreamStatus = 'NORMAL';
-let ownStatus      = 'NORMAL'; // Hanya berubah via command ATAU cascade upstream
+let ownStatus = 'NORMAL'; // Hanya berubah via command ATAU cascade upstream
 
 function generateSensorData() {
   const t = Date.now() / 1000;
@@ -57,9 +56,9 @@ function generateSensorData() {
   }
 
   let tegangan = 380 + (Math.random() - 0.5) * 18;
-  let arus     = 140 + Math.sin(t / 20) * 35 + Math.random() * 15;
-  let beban    = 48 + Math.sin(t / 22) * 18 + Math.random() * 8; // 22–74%
-  let suhu     = 52 + (beban / 100) * 18 + Math.random() * 4;
+  let arus = 140 + Math.sin(t / 20) * 35 + Math.random() * 15;
+  let beban = 48 + Math.sin(t / 22) * 18 + Math.random() * 8; // 22–74%
+  let suhu = 52 + (beban / 100) * 18 + Math.random() * 4;
 
   ownStatus = beban > 85 ? 'WARNING' : 'NORMAL';
 
@@ -67,17 +66,17 @@ function generateSensorData() {
 }
 
 function publishData() {
-  const ts   = new Date().toISOString();
+  const ts = new Date().toISOString();
   const base = { nodeId: NODE_ID, timestamp: ts };
   const data = generateSensorData();
   const daya = +(data.tegangan * data.arus / 1000).toFixed(2);
 
   const PUB_BASE = `relay/${UPSTREAM}/rx/${NODE_ID}`;
-  client.publish(`${PUB_BASE}/tegangan`, JSON.stringify({ ...base, value: data.tegangan, unit: 'V' }),  { qos: 0, retain: true });
-  client.publish(`${PUB_BASE}/arus`,     JSON.stringify({ ...base, value: data.arus,     unit: 'A' }),  { qos: 0, retain: true });
-  client.publish(`${PUB_BASE}/beban`,    JSON.stringify({ ...base, value: data.beban,    unit: '%' }),  { qos: 0, retain: true });
-  client.publish(`${PUB_BASE}/suhu`,     JSON.stringify({ ...base, value: data.suhu,     unit: '°C' }), { qos: 0, retain: true });
-  client.publish(`${PUB_BASE}/daya`,     JSON.stringify({ ...base, value: daya,           unit: 'kW' }), { qos: 0, retain: true });
+  client.publish(`${PUB_BASE}/tegangan`, JSON.stringify({ ...base, value: data.tegangan, unit: 'V' }), { qos: 0, retain: true });
+  client.publish(`${PUB_BASE}/arus`, JSON.stringify({ ...base, value: data.arus, unit: 'A' }), { qos: 0, retain: true });
+  client.publish(`${PUB_BASE}/beban`, JSON.stringify({ ...base, value: data.beban, unit: '%' }), { qos: 0, retain: true });
+  client.publish(`${PUB_BASE}/suhu`, JSON.stringify({ ...base, value: data.suhu, unit: '°C' }), { qos: 0, retain: true });
+  client.publish(`${PUB_BASE}/daya`, JSON.stringify({ ...base, value: daya, unit: 'kW' }), { qos: 0, retain: true });
 
   client.publish(
     `${PUB_BASE}/status`,
@@ -113,7 +112,7 @@ client.on('connect', () => {
   client.subscribe(`gridwatch/${UPSTREAM}/status`, { qos: 1 }, (err) => {
     if (!err) console.log(`📥 [TrafoA] Subscribed to ${UPSTREAM}/status`);
   });
-  client.subscribe(`gridwatch/${UPSTREAM}/lwt`, { qos: 1 }, () => {});
+  client.subscribe(`gridwatch/${UPSTREAM}/lwt`, { qos: 1 }, () => { });
   client.subscribe(`gridwatch/kontrol/${NODE_ID}/cmd`, { qos: 2 }, (err) => {
     if (!err) console.log(`📥 [TrafoA] Subscribed to kontrol commands`);
   });
@@ -148,10 +147,10 @@ client.on('message', (topic, message) => {
 
     if (topic === `gridwatch/kontrol/${NODE_ID}/cmd`) {
       const prev = ownStatus;
-      if (payload.command === 'TRIP')    ownStatus = 'ISOLATED';
-      if (payload.command === 'RESET')   ownStatus = upstreamStatus === 'NORMAL' ? 'NORMAL' : 'NO_POWER';
+      if (payload.command === 'TRIP') ownStatus = 'ISOLATED';
+      if (payload.command === 'RESET') ownStatus = upstreamStatus === 'NORMAL' ? 'NORMAL' : 'NO_POWER';
       if (payload.command === 'ISOLATE') ownStatus = 'ISOLATED';
-      if (payload.command === 'FAULT')   ownStatus = 'FAULT';
+      if (payload.command === 'FAULT') ownStatus = 'FAULT';
       console.log(`📨 [TrafoA] Command: ${payload.command} → ${prev} → ${ownStatus}`);
 
       client.publish(
@@ -163,8 +162,8 @@ client.on('message', (topic, message) => {
   } catch (e) { console.error('[TrafoA] Parse error:', e.message); }
 });
 
-client.on('error',     (err) => console.error(`❌ [TrafoA] Error:`, err.message));
-client.on('reconnect', ()    => console.log(`🔄 [TrafoA] Reconnecting...`));
+client.on('error', (err) => console.error(`❌ [TrafoA] Error:`, err.message));
+client.on('reconnect', () => console.log(`🔄 [TrafoA] Reconnecting...`));
 
 process.on('SIGINT', () => {
   console.log('\n🛑 [TrafoA] Shutting down...');
