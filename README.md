@@ -97,6 +97,27 @@ Tingkat keandalan tertinggi untuk pesan kritikal (Control Downlink & Alarm).
 
 ---
 
+## Fitur Lanjutan MQTT (MQTT v5 & v3.1.1)
+
+Proyek ini mendemonstrasikan kelima konsep krusial dalam protokol MQTT:
+
+1. **Topic Hierarchy & Wildcard**
+   - Hierarki direpresentasikan lewat *Dual-Topic Architecture* (`relay/...` dan `gridwatch/...`).
+   - *Wildcard* **`+`** (Single-level) digunakan di Alert Engine: `gridwatch/+/status`.
+   - *Wildcard* **`#`** (Multi-level) digunakan di Dashboard Subscriber dan Node Perantara: `relay/[id]/rx/#`.
+2. **Retained Message**
+   - Seluruh data metrik sensor, *State* (Status), dan pesan LWT di-publish dengan `{ retain: true }`. Hal ini sangat penting agar *subscriber* baru (contoh: browser web baru di-refresh) langsung mendapatkan data terakhir tanpa menunggu trafo menembakkan paket berikutnya.
+3. **Topic Alias (MQTT v5)**
+   - Semua koneksi *publisher* dan *subscriber* telah di-upgrade menggunakan `protocolVersion: 5`.
+   - Untuk menghemat *bandwidth* pada data frekuensi tinggi (sensor yang dikirim setiap detik), *publisher* menggunakan `topicAlias` bawaan MQTT v5 (ID 1-5 untuk tiap tegangan, arus, suhu, dsb.).
+4. **Shared Subscription (MQTT v5)**
+   - Alert Engine meng-subscribe pola grup `$share/alert-group/gridwatch/+/status`.
+   - Hal ini memungkinkan *Load Balancing* jika sistem ini di-skalakan dengan menjalankan 2 atau lebih *Alert Engine* secara paralel, sehingga *broker* membagi pesan peringatan ke salah satunya secara adil (menghindari duplikasi).
+5. **Flow Control / Batas In-Flight (MQTT v5)**
+   - Pada `connectOptions` milik subscriber, parameter `properties: { receiveMaximum: 50 }` ditambahkan untuk mencegah *bottleneck* atau luapan memori dari *unacknowledged messages* (QoS 1/2) ketika beban komunikasi tinggi.
+
+---
+
 ## Arsitektur Aplikasi
 
 1. **Broker MQTT**: Pusat komunikasi (mendukung broker publik seperti EMQX atau layanan *cloud* seperti HiveMQ dengan otentikasi TLS).

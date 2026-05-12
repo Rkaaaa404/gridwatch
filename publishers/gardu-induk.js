@@ -23,6 +23,7 @@ const connectOptions = {
   clean: true,
   connectTimeout: 10000,
   reconnectPeriod: 3000,
+  protocolVersion: 5,
   will: { topic: LWT_TOPIC, payload: LWT_PAYLOAD, qos: 1, retain: true },
 };
 if (process.env.MQTT_USERNAME) connectOptions.username = process.env.MQTT_USERNAME;
@@ -62,11 +63,12 @@ function publishSensor(data) {
   const base = { nodeId: NODE_ID, timestamp: ts };
   const daya = +(data.tegangan * data.arus / 1000).toFixed(2);
 
-  client.publish(`gridwatch/${NODE_ID}/tegangan`, JSON.stringify({ ...base, value: data.tegangan, unit: 'V' }),   { qos: 0, retain: true });
-  client.publish(`gridwatch/${NODE_ID}/arus`,     JSON.stringify({ ...base, value: data.arus,     unit: 'A' }),   { qos: 0, retain: true });
-  client.publish(`gridwatch/${NODE_ID}/beban`,    JSON.stringify({ ...base, value: data.beban,    unit: '%' }),   { qos: 0, retain: true });
-  client.publish(`gridwatch/${NODE_ID}/suhu`,     JSON.stringify({ ...base, value: data.suhu,     unit: '°C' }),  { qos: 0, retain: true });
-  client.publish(`gridwatch/${NODE_ID}/daya`,     JSON.stringify({ ...base, value: daya,           unit: 'kW' }), { qos: 0, retain: true });
+  // Menggunakan Topic Alias untuk sensor data frekuensi tinggi
+  client.publish(`gridwatch/${NODE_ID}/tegangan`, JSON.stringify({ ...base, value: data.tegangan, unit: 'V' }),   { qos: 0, retain: true, properties: { topicAlias: 1 } });
+  client.publish(`gridwatch/${NODE_ID}/arus`,     JSON.stringify({ ...base, value: data.arus,     unit: 'A' }),   { qos: 0, retain: true, properties: { topicAlias: 2 } });
+  client.publish(`gridwatch/${NODE_ID}/beban`,    JSON.stringify({ ...base, value: data.beban,    unit: '%' }),   { qos: 0, retain: true, properties: { topicAlias: 3 } });
+  client.publish(`gridwatch/${NODE_ID}/suhu`,     JSON.stringify({ ...base, value: data.suhu,     unit: '°C' }),  { qos: 0, retain: true, properties: { topicAlias: 4 } });
+  client.publish(`gridwatch/${NODE_ID}/daya`,     JSON.stringify({ ...base, value: daya,           unit: 'kW' }), { qos: 0, retain: true, properties: { topicAlias: 5 } });
 
   client.publish(
     `gridwatch/${NODE_ID}/status`,

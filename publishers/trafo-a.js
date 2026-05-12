@@ -23,6 +23,7 @@ const connectOptions = {
   clean: true,
   connectTimeout: 10000,
   reconnectPeriod: 3000,
+  protocolVersion: 5,
   will: { topic: LWT_TOPIC, payload: LWT_PAYLOAD, qos: 1, retain: true },
 };
 if (process.env.MQTT_USERNAME) connectOptions.username = process.env.MQTT_USERNAME;
@@ -72,11 +73,11 @@ function publishData() {
   const daya = +(data.tegangan * data.arus / 1000).toFixed(2);
 
   const PUB_BASE = `relay/${UPSTREAM}/rx/${NODE_ID}`;
-  client.publish(`${PUB_BASE}/tegangan`, JSON.stringify({ ...base, value: data.tegangan, unit: 'V' }), { qos: 0, retain: true });
-  client.publish(`${PUB_BASE}/arus`, JSON.stringify({ ...base, value: data.arus, unit: 'A' }), { qos: 0, retain: true });
-  client.publish(`${PUB_BASE}/beban`, JSON.stringify({ ...base, value: data.beban, unit: '%' }), { qos: 0, retain: true });
-  client.publish(`${PUB_BASE}/suhu`, JSON.stringify({ ...base, value: data.suhu, unit: '°C' }), { qos: 0, retain: true });
-  client.publish(`${PUB_BASE}/daya`, JSON.stringify({ ...base, value: daya, unit: 'kW' }), { qos: 0, retain: true });
+  client.publish(`${PUB_BASE}/tegangan`, JSON.stringify({ ...base, value: data.tegangan, unit: 'V' }), { qos: 0, retain: true, properties: { topicAlias: 1 } });
+  client.publish(`${PUB_BASE}/arus`, JSON.stringify({ ...base, value: data.arus, unit: 'A' }), { qos: 0, retain: true, properties: { topicAlias: 2 } });
+  client.publish(`${PUB_BASE}/beban`, JSON.stringify({ ...base, value: data.beban, unit: '%' }), { qos: 0, retain: true, properties: { topicAlias: 3 } });
+  client.publish(`${PUB_BASE}/suhu`, JSON.stringify({ ...base, value: data.suhu, unit: '°C' }), { qos: 0, retain: true, properties: { topicAlias: 4 } });
+  client.publish(`${PUB_BASE}/daya`, JSON.stringify({ ...base, value: daya, unit: 'kW' }), { qos: 0, retain: true, properties: { topicAlias: 5 } });
 
   client.publish(
     `${PUB_BASE}/status`,

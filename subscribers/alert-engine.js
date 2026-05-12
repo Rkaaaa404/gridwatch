@@ -27,6 +27,10 @@ const connectOptions = {
   clean: false, // Persistent session!
   connectTimeout: 10000,
   reconnectPeriod: 3000,
+  protocolVersion: 5, // Menggunakan MQTT v5
+  properties: {
+    receiveMaximum: 50, // Flow Control: batas maksimal unacked QoS 1/2 in-flight
+  }
 };
 if (process.env.MQTT_USERNAME) connectOptions.username = process.env.MQTT_USERNAME;
 if (process.env.MQTT_PASSWORD) connectOptions.password = process.env.MQTT_PASSWORD;
@@ -127,22 +131,21 @@ function checkAlertRules(nodeId, payload, topic) {
 client.on('connect', (connack) => {
   console.log(`✅ [AlertEngine] Connected! Persistent session: ${!connack.sessionPresent ? 'new' : 'resumed'}`);
 
-  // Subscribe dengan wildcard + — semua node sekaligus
-  // Ini demonstrasi penggunaan wildcard single-level +
-  client.subscribe('gridwatch/+/status', { qos: 1 }, (err) => {
-    if (!err) console.log(`📥 [AlertEngine] Subscribed to gridwatch/+/status (wildcard QoS 1)`);
+  // Menggunakan Shared Subscription untuk Load Balancing (jika ada >1 AlertEngine)
+  client.subscribe('$share/alert-group/gridwatch/+/status', { qos: 1 }, (err) => {
+    if (!err) console.log(`📥 [AlertEngine] Subscribed to gridwatch/+/status (Shared Subscription)`);
   });
 
-  client.subscribe('gridwatch/+/alarm', { qos: 2 }, (err) => {
-    if (!err) console.log(`📥 [AlertEngine] Subscribed to gridwatch/+/alarm (wildcard QoS 2)`);
+  client.subscribe('$share/alert-group/gridwatch/+/alarm', { qos: 2 }, (err) => {
+    if (!err) console.log(`📥 [AlertEngine] Subscribed to gridwatch/+/alarm (Shared Subscription)`);
   });
 
-  client.subscribe('gridwatch/+/lwt', { qos: 1 }, (err) => {
-    if (!err) console.log(`📥 [AlertEngine] Subscribed to gridwatch/+/lwt (wildcard QoS 1)`);
+  client.subscribe('$share/alert-group/gridwatch/+/lwt', { qos: 1 }, (err) => {
+    if (!err) console.log(`📥 [AlertEngine] Subscribed to gridwatch/+/lwt (Shared Subscription)`);
   });
 
-  client.subscribe('gridwatch/kontrol/+/ack', { qos: 2 }, (err) => {
-    if (!err) console.log(`📥 [AlertEngine] Subscribed to gridwatch/kontrol/+/ack`);
+  client.subscribe('$share/alert-group/gridwatch/kontrol/+/ack', { qos: 2 }, (err) => {
+    if (!err) console.log(`📥 [AlertEngine] Subscribed to gridwatch/kontrol/+/ack (Shared Subscription)`);
   });
 
   // Semua sensor untuk anomaly detection

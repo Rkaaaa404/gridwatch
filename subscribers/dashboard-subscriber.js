@@ -83,6 +83,10 @@ const connectOptions = {
   clean: true,
   connectTimeout: 10000,
   reconnectPeriod: 3000,
+  protocolVersion: 5,
+  properties: {
+    receiveMaximum: 100, // Flow Control: batas maksimal unacked QoS 1/2 in-flight
+  }
 };
 if (process.env.MQTT_USERNAME) connectOptions.username = process.env.MQTT_USERNAME;
 if (process.env.MQTT_PASSWORD) connectOptions.password = process.env.MQTT_PASSWORD;
