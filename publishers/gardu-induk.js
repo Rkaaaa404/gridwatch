@@ -87,7 +87,7 @@ function publishSensor(data) {
           : `Beban kritis Gardu Induk: ${data.beban.toFixed(1)}%`,
         status: operationalStatus,
       }),
-      { qos: 2, retain: false }
+      { qos: 2, retain: false, properties: { messageExpiryInterval: 3600 } }
     );
   }
 

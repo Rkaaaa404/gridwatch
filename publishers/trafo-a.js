@@ -96,7 +96,7 @@ function publishData() {
           : `Suhu kritis Trafo A: ${data.suhu.toFixed(1)}°C`,
         status: ownStatus,
       }),
-      { qos: 2, retain: false }
+      { qos: 2, retain: false, properties: { messageExpiryInterval: 3600 } }
     );
   }
 

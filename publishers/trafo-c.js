@@ -97,7 +97,7 @@ function publishData() {
           : `Trafo C (Maninjau): beban ${data.beban.toFixed(1)}% | suhu ${data.suhu.toFixed(1)}°C`,
         status: ownStatus,
       }),
-      { qos: 2, retain: false }
+      { qos: 2, retain: false, properties: { messageExpiryInterval: 3600 } }
     );
   }
 

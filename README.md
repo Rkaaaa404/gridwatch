@@ -97,24 +97,26 @@ Tingkat keandalan tertinggi untuk pesan kritikal (Control Downlink & Alarm).
 
 ---
 
-## Fitur Lanjutan MQTT (MQTT v5 & v3.1.1)
+## Implementasi 10 Fitur Utama MQTT
 
-Proyek ini mendemonstrasikan kelima konsep krusial dalam protokol MQTT:
+Proyek GridWatch dirancang untuk mendemonstrasikan spektrum fitur MQTT secara komprehensif (MQTT v5 & v3.1.1):
 
-1. **Topic Hierarchy & Wildcard**
-   - Hierarki direpresentasikan lewat *Dual-Topic Architecture* (`relay/...` dan `gridwatch/...`).
-   - *Wildcard* **`+`** (Single-level) digunakan di Alert Engine: `gridwatch/+/status`.
-   - *Wildcard* **`#`** (Multi-level) digunakan di Dashboard Subscriber dan Node Perantara: `relay/[id]/rx/#`.
-2. **Retained Message**
-   - Seluruh data metrik sensor, *State* (Status), dan pesan LWT di-publish dengan `{ retain: true }`. Hal ini sangat penting agar *subscriber* baru (contoh: browser web baru di-refresh) langsung mendapatkan data terakhir tanpa menunggu trafo menembakkan paket berikutnya.
-3. **Topic Alias (MQTT v5)**
-   - Semua koneksi *publisher* dan *subscriber* telah di-upgrade menggunakan `protocolVersion: 5`.
-   - Untuk menghemat *bandwidth* pada data frekuensi tinggi (sensor yang dikirim setiap detik), *publisher* menggunakan `topicAlias` bawaan MQTT v5 (ID 1-5 untuk tiap tegangan, arus, suhu, dsb.).
-4. **Shared Subscription (MQTT v5)**
-   - Alert Engine meng-subscribe pola grup `$share/alert-group/gridwatch/+/status`.
-   - Hal ini memungkinkan *Load Balancing* jika sistem ini di-skalakan dengan menjalankan 2 atau lebih *Alert Engine* secara paralel, sehingga *broker* membagi pesan peringatan ke salah satunya secara adil (menghindari duplikasi).
-5. **Flow Control / Batas In-Flight (MQTT v5)**
-   - Pada `connectOptions` milik subscriber, parameter `properties: { receiveMaximum: 50 }` ditambahkan untuk mencegah *bottleneck* atau luapan memori dari *unacknowledged messages* (QoS 1/2) ketika beban komunikasi tinggi.
+1.  **Topic Hierarchy**: Struktur topik terorganisir secara hierarkis (`gridwatch/[id]/[sensor]`) untuk memudahkan manajemen data ribuan node.
+2.  **Wildcards (`+` & `#`)**:
+    *   **Single-level (`+`)**: Digunakan AlertEngine untuk memantau status semua node (`gridwatch/+/status`).
+    *   **Multi-level (`#`)**: Digunakan DashboardSubscriber untuk menangkap seluruh *traffic* di bawah *root* (`gridwatch/#`).
+3.  **Retained Messages**: Status operasional dan data sensor terakhir disimpan oleh *broker* (`{ retain: true }`), sehingga *subscriber* baru langsung mendapatkan informasi terkini tanpa menunggu jadwal *publish* berikutnya.
+4.  **Last Will and Testament (LWT)**: Fitur "surat wasiat" di mana *broker* akan otomatis mempublikasikan status `OFFLINE` jika sebuah node terputus mendadak (crash/loss connection).
+5.  **Quality of Service (QoS)**:
+    *   **QoS 0**: Data sensor (kehilangan satu paket tidak masalah).
+    *   **QoS 1**: Status & LWT (jaminan sampai minimal satu kali).
+    *   **QoS 2**: Perintah Kontrol & Alarm (jaminan sampai tepat satu kali, mencegah duplikasi perintah kritis).
+6.  **Topic Alias (MQTT v5)**: Mengurangi beban *overhead* pada paket data. String topik yang panjang dipetakan ke ID integer (1-5) untuk data telemetri yang dikirim setiap detik.
+7.  **Shared Subscriptions (MQTT v5)**: Implementasi `$share/group/...` pada Alert Engine untuk mendemonstrasikan mekanisme *Load Balancing* pesan di antara beberapa instance subscriber.
+8.  **Flow Control (MQTT v5)**: Penggunaan properti `receiveMaximum` pada sisi subscriber untuk membatasi jumlah pesan *in-flight* (QoS 1/2) guna mencegah *overload* pada pemrosesan data.
+9.  **Request-Response Pattern**: Simulasi komunikasi dua arah di mana pengiriman perintah (`.../cmd`) akan diikuti oleh konfirmasi eksekusi atau *acknowledgment* (`.../ack`) dari node target.
+10. **Payload Metadata (JSON Format)**: Pesan dikirim dalam format JSON yang mengandung *metadata* lengkap seperti `nodeId`, `timestamp`, `unit`, dan `reason`, bukan sekadar nilai mentah (*raw value*).
+11. **Message Expiry Interval (MQTT v5)**: Pesan kritikal seperti *Alarm* diatur untuk kedaluwarsa setelah durasi tertentu (contoh: 1 jam), sehingga peringatan basi tidak akan menumpuk di *broker* atau diterima oleh *subscriber* yang baru terkoneksi setelah masalah selesai.
 
 ---
 

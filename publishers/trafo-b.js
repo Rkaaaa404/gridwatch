@@ -104,7 +104,7 @@ function publishData() {
             : `Beban residensial tinggi: ${data.beban.toFixed(1)}% | PF: ${data.powerFactor}`,
         status: ownStatus,
       }),
-      { qos: 2, retain: false }
+      { qos: 2, retain: false, properties: { messageExpiryInterval: 3600 } }
     );
   }
 
